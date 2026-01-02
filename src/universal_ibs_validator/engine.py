@@ -80,3 +80,30 @@ class IBSValidator:
         if not self.results:
             return pd.DataFrame()
         return pd.concat(self.results, ignore_index=True)
+
+    # Add this new method to your IBSValidator class
+    def tag_dataset(self, df: pd.DataFrame, rules: List[ValidationRule]) -> pd.DataFrame:
+        """
+        Runs validation rules and appends a 'QUALITY_STATUS' column.
+        PASS = Data is valid.
+        FAIL = Data failed one or more math checks.
+        """
+        # Default to PASS
+        df['QUALITY_STATUS'] = 'PASS'
+        
+        # Normalize columns for processing
+        df_copy = df.copy()
+        df_copy.columns = [c.upper() for c in df_copy.columns]
+
+        for rule in rules:
+            # reuse your existing _process_rule logic, but instead of appending to self.results,
+            # we capture the IDs of failed rows.
+            failed_rows_df = self._get_failed_rows(rule, df_copy, df_copy) # Refactor _process_rule to return this
+            
+            if not failed_rows_df.empty:
+                # Mark these specific rows as FAIL in the main dataframe
+                # Assuming we have a unique key or index to join back on
+                fail_indices = failed_rows_df.index
+                df.loc[fail_indices, 'QUALITY_STATUS'] = 'FAIL'
+                
+        return df
