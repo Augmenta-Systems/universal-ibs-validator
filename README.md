@@ -1,123 +1,97 @@
-# Universal IBS Validator
+# 📐 Universal IBS Validator (The Logic Engine)
 
-A specialized Python library for validating International Banking Statistics (IBS) data submissions for the Bank for International Settlements (BIS). This tool automates the validation of Locational Banking Statistics (LBS) and Consolidated Banking Statistics (CBS) data points, ensuring consistency and accuracy before submission.
+![Role](https://img.shields.io/badge/Role-Logic%20Engine-purple)
+![Domain](https://img.shields.io/badge/Domain-BIS%20Statistics-green)
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 
-## 🚀 Features
+**The Mathematical & Statistical Brain behind the Augmenta Sovereign Shield.**
 
-* **Universal Applicability:** Designed to be country-agnostic. Configurable for any reporting country (e.g., CA, US, GB) and local currency.
-* **Vectorized Validation:** Uses high-performance Pandas operations (merges/group-bys) instead of slow iterative loops, handling large datasets efficiently.
-* **Comprehensive Rule Sets:**
-    * **LBS:** Validates internal consistency for Residency (LBSR) and Nationality (LBSN) reports, plus cross-report consistency checks.
-    * **CBS:** Validates internal consistency for Immediate Counterparty (CBSI) and Guarantor Basis (CBSG), including complex risk transfer logic.
-* **Interactive Reporting:** Generates detailed HTML dashboards highlighting failing data points with color-coded diffs.
+---
 
-## 📦 Installation
+### 🧠 Overview
+The **Universal IBS Validator** is a high-performance Python library designed to validate International Banking Statistics (IBS).
 
-Clone the repository and install the dependencies:
+While traditional validators only output "Pass/Fail" reports, this engine is designed for **Active Governance**. It acts as the "Integrity & Confidentiality" engine for the **Triple-Lock Governance Model**:
+1.  **Validates Math:** Checks complex identities (e.g., $B = I + J + M$).
+2.  **Calculates Dominance:** Detects statistical confidentiality breaches (e.g., "Dominance Rule" > 60% share).
+3.  **Tags Data:** Enriches datasets with `QUALITY_STATUS` and `CONFIDENTIALITY_STATUS` metadata for downstream security enforcement.
 
-```bash
-git clone [https://github.com/your-username/universal-ibs-validator.git](https://github.com/your-username/universal-ibs-validator.git)
-cd universal-ibs-validator
-pip install .
+---
 
-For development (running tests):
+### ⚡ Key Features
 
-pip install .[dev]
-```
+#### 1. Statistical Confidentiality (The Dominance Rule)
+Automatically detects if a data point is "too identifying" to be published.
+* **Logic:** Calculates if a single contributor (e.g., a specific Bank) holds >60% of a reported aggregate.
+* **Output:** Tags rows as `N` (Not Free to Publish) or `F` (Free).
+* **Use Case:** Allows "World Totals" to be published while automatically hiding sensitive country-level contributors.
 
-## 🛠️ Usage
-This library is designed to be used programmatically within your data pipelines.
+#### 2. Vectorized Validation (The Integrity Check)
+Uses high-performance Pandas operations to validate millions of rows in seconds without loops.
+* **LBSR / LBSN:** Residency and Nationality internal consistency.
+* **Cross-Report:** Verifies that Assets (Residency) match Assets (Nationality).
 
-# 1. Basic Example
-```Python
+#### 3. Enrichment Mode
+Designed to run inside ETL pipelines (Databricks/Synapse). Instead of stopping the pipeline on error, it **tags** the data so the Governance Shield can hide invalid rows from analysts while preserving them for engineers.
 
-import pandas as pd
+---
+
+### 🛠️ Usage
+
+#### A. Basic Validation (Reporting)
+Generate an HTML report of failures for data stewards.
+
+```python
 from universal_ibs_validator.engine import IBSValidator
-from universal_ibs_validator.domain_types import ValidationContext
-from universal_ibs_validator.rules.lbs import get_lbs_cross_report_rules
 from universal_ibs_validator.reporting import generate_html_report
 
-# 1. Define Context
-context = ValidationContext(
-    reporting_country="CA",  # Your Country Code (ISO 2-char)
-    currency_code="CAD",     # Your Local Currency
-    quarter="2025-Q3"
-)
-
-# 2. Load Your Data (From CSV, Parquet, SQL, etc.)
-lbsr_df = pd.read_csv("path/to/lbsr_data.csv")
-lbsn_df = pd.read_csv("path/to/lbsn_data.csv")
-
-# 3. Initialize Validator
 validator = IBSValidator(context)
-
-# 4. Run Rules
-# Example: Check consistency between Residency and Nationality reports
-cross_rules = get_lbs_cross_report_rules()
-validator.validate(lhs_df=lbsr_df, rhs_df=lbsn_df, rules=cross_rules)
-
-# 5. Generate Report
-failures = validator.get_failures()
-generate_html_report(failures, "validation_report.html")
+validator.validate(df_lbsr, df_lbsn, rules)
+generate_html_report(validator.get_failures(), "report.html")
 ```
 
-# 2. Available Rule Sets
-You can import different rule sets depending on what you need to validate:
+#### B. The "Sovereign Pipeline" (Tagging)
+Enrich data for the Triple-Lock Governance Shield.
 
 ```Python
+from universal_ibs_validator.confidentiality import apply_dominance_rule
+from universal_ibs_validator.engine import IBSValidator
 
-from universal_ibs_validator.rules.lbs import (
-    get_lbsr_internal_rules,      # Verify LBSR totals (e.g., Total = Dom + For)
-    get_lbsn_internal_rules,      # Verify LBSN totals
-    get_lbs_cross_report_rules    # Verify LBSR vs LBSN consistency
+# 1. Apply Confidentiality Logic
+# Flags 'N' if any bank holds >60% of the market
+df_tagged = apply_dominance_rule(
+    raw_df, 
+    value_col="VALUE", 
+    group_cols=["REP_CTY", "SECTOR"], 
+    contributor_col="BANK_ID"
 )
-from universal_ibs_validator.rules.cbs import (
-    get_cbs_internal_rules,       # Verify CBSI consistency
-    get_cbsg_internal_rules,      # Verify CBSG consistency
-    get_cbs_cross_report_rules    # Verify CBSI vs CBSG consistency
-)
+
+# 2. Apply Integrity Logic
+# Flags 'FAIL' if math identities are broken
+validator = IBSValidator(context)
+df_final = validator.tag_dataset(df_tagged, rules=get_rules())
+
+# 3. Output for Shield Enforcement
+df_final.write.saveAsTable("gold_sovereign_data")
 ```
 
-## 📂 Project Structure
+#### 📂 Project Structure
 ```Plaintext
-
 universal-ibs-validator/
-├── pyproject.toml                 # Package configuration
-├── README.md                      # This file
-├── src/
-│   └── universal_ibs_validator/
-│       ├── __init__.py
-│       ├── domain_types.py        # Data classes (ValidationContext, ValidationRule)
-│       ├── engine.py              # Core validation logic (Vectorized Merges)
-│       ├── reporting.py           # HTML report generation
-│       └── rules/
-│           ├── __init__.py
-│           ├── lbs.py             # LBS Consistency Logic
-│           └── cbs.py             # CBS Consistency Logic
-└── tests/                         # Unit tests
+├── src/universal_ibs_validator/
+│   ├── rules/                 # BIS Validation Logic (LBS/CBS)
+│   ├── confidentiality.py     # Dominance Rule Logic (The "N" vs "F" Calculator)
+│   ├── engine.py              # Core Vectorized Engine & Tagging System
+│   └── domain_types.py        # Data Classes
+│
+├── tests/
+│   └── test_confidentiality.py # Unit tests for Dominance Logic
+│
+└── README.md
 ```
 
-## 📊 Data Requirements
-The validator expects Pandas DataFrames with standard BIS SDMX column names:
+#### 🤝 Integration
+This library provides the **Metadata Tags** required by the _**augmenta-governance-shield**_ to enforce Row-Level Security.
 
-**LBS Columns:** POSITION, INSTRUMENT, DENOM, CURR_TYPE, PARENT_CTY, REP_BANK_TYPE, REP_CTY, CP_SECTOR, CP_COUNTRY, VALUE
-
-**CBS Columns:** MEASURE, REP_COUNTRY, BANK_TYPE, REPORTING_BASIS, POSITION, INSTRUMENT, REMAINING_MATURITY, CP_CURRENCY, CP_SECTOR, CP_COUNTRY, VALUE
-
-_Note: Column names are case-insensitive (the engine normalizes them to uppercase)._
-
-## 🤝 Contributing
-Contributions are welcome! If you find a new BIS validation rule or want to improve the engine performance:
-
-1. Fork the repository.
-
-2. Create a feature branch (git checkout -b feature/NewRule).
-
-3. Commit your changes.
-
-4. Open a Pull Request.
-
-## 📄 License
-Distributed under the MIT License. See LICENSE for more information.
-
-**Developed for the global central banking community to streamline BIS International Banking Statistics (IBS) reporting.**
+#### 📄 License
+Distributed under the MIT License.
